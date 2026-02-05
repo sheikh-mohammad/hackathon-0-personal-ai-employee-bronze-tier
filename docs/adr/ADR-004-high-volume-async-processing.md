@@ -11,15 +11,15 @@
 ## Context
 
 During discovery, we learned:
-- **Email Volume:** 50-100 emails per day (high volume)
-- **Performance Requirement:** Process each email within 30 seconds of arrival
-- **Monitoring Mode:** Continuous (check every 2 minutes)
+- **Email Volume:** High volume (can vary, user didn't specify exact number)
+- **Performance Requirement:** Fast processing (< 10 seconds per email)
+- **Monitoring Mode:** Continuous (check every 10 seconds)
 
 This creates specific technical requirements:
 - Watcher must handle burst traffic (multiple emails arriving simultaneously)
-- Processing pipeline must be fast (< 30 seconds per email)
+- Processing pipeline must be fast (< 10 seconds per email)
 - System must not fall behind during peak hours
-- Need to handle 4-5 emails per hour on average, up to 10-15 during peaks
+- Need to handle variable email volume efficiently
 
 ---
 
@@ -33,10 +33,10 @@ Gmail API → Watcher (detect) → Queue → Worker Pool → Skills → Vault
 ```
 
 Key components:
-1. **Watcher:** Lightweight, only detects and queues
+1. **Watcher:** Lightweight, only detects and queues (checks every 10 seconds)
 2. **Queue:** In-memory queue (Python queue.Queue) for Bronze
 3. **Worker Pool:** 3 concurrent workers processing emails
-4. **Skills:** Optimized for speed (< 10 seconds each)
+4. **Skills:** Optimized for speed (< 3 seconds each, < 10 seconds total)
 
 ---
 
@@ -45,15 +45,15 @@ Key components:
 ### Why Asynchronous Processing?
 
 1. **Performance Requirements**
-   - 50-100 emails/day = ~4 emails/hour average
-   - Peak times could be 10-15 emails/hour
-   - Sequential processing: 30 sec/email × 15 emails = 7.5 minutes backlog
-   - Parallel processing: 30 sec/email ÷ 3 workers = 2.5 minutes backlog
-   - Meets < 30 second requirement for most emails
+   - High volume with variable traffic patterns
+   - Peak times could have multiple emails arriving simultaneously
+   - Sequential processing: 10 sec/email × 10 emails = 100 seconds backlog
+   - Parallel processing: 10 sec/email ÷ 3 workers = ~33 seconds backlog
+   - Meets < 10 second requirement for most emails when queue is empty
 
 2. **Watcher Responsiveness**
    - Watcher doesn't block on processing
-   - Can detect new emails while others are processing
+   - Can detect new emails every 10 seconds while others are processing
    - No missed emails during processing delays
 
 3. **Resource Utilization**
@@ -69,9 +69,9 @@ Key components:
 ### Why 3 Workers?
 
 1. **Performance Testing**
-   - 1 worker: Sequential, too slow for peaks
+   - 1 worker: Sequential, too slow for bursts
    - 2 workers: Better, but still bottleneck at peaks
-   - 3 workers: Handles 15 emails/hour comfortably
+   - 3 workers: Handles burst traffic comfortably
    - 4+ workers: Diminishing returns, more complexity
 
 2. **Resource Constraints**
@@ -80,7 +80,7 @@ Key components:
    - 3 workers balance speed vs resources
 
 3. **Cost Considerations**
-   - Using Qwen code (user's LLM choice)
+   - Using Qwen code or Kiro IDE (user's LLM choices)
    - 3 concurrent API calls is reasonable
    - Can adjust based on API rate limits
 
@@ -117,7 +117,7 @@ class GmailWatcher:
                     logging.info(f"Queued: {action_file.name}")
             except Exception as e:
                 logging.error(f"Detection error: {e}")
-            time.sleep(120)  # Check every 2 minutes
+            time.sleep(10)  # Check every 10 seconds
 
     def process_worker(self):
         """Worker thread that processes queued emails"""
@@ -144,13 +144,19 @@ class GmailWatcher:
 
     def process_email_pipeline(self, action_file: Path):
         """Run email through skill pipeline"""
-        # Step 1: Classify (fast, < 5 seconds)
+        # Step 1: Classify (fast, < 2 seconds)
         subprocess.run(['ccr', 'code', '--skill', 'email-classifier', str(action_file)])
 
-        # Step 2: Process (medium, < 10 seconds)
+        # Step 2: Process (fast, < 2 seconds)
         subprocess.run(['ccr', 'code', '--skill', 'email-processor', str(action_file)])
 
-        # Step 3: Dashboard update (fast, < 3 seconds)
+        # Step 3: Draft Reply (medium, < 3 seconds)
+        subprocess.run(['ccr', 'code', '--skill', 'email-reply-writer', str(action_file)])
+
+        # Step 4: Create Summary (fast, < 2 seconds)
+        subprocess.run(['ccr', 'code', '--skill', 'summary-creation', str(action_file)])
+
+        # Step 5: Dashboard update (fast, < 1 second)
         # Note: Dashboard updates are serialized to avoid conflicts
         with self.dashboard_lock:
             subprocess.run(['ccr', 'code', '--skill', 'dashboard-updater', str(self.vault_path)])
@@ -193,11 +199,13 @@ class GmailWatcher:
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| Email detection latency | < 2 minutes | Time from email arrival to detection |
-| Classification time | < 5 seconds | email-classifier skill execution |
-| Processing time | < 10 seconds | email-processor skill execution |
-| Dashboard update | < 3 seconds | dashboard-updater skill execution |
-| **Total per email** | **< 20 seconds** | Detection to completion |
+| Email detection latency | < 10 seconds | Time from email arrival to detection |
+| Classification time | < 2 seconds | email-classifier skill execution |
+| Processing time | < 2 seconds | email-processor skill execution |
+| Reply drafting time | < 3 seconds | email-reply-writer skill execution |
+| Summary creation time | < 2 seconds | summary-creation skill execution |
+| Dashboard update | < 1 second | dashboard-updater skill execution |
+| **Total per email** | **< 10 seconds** | Detection to completion |
 | Queue backlog | < 5 emails | Max queued emails during peaks |
 | Worker utilization | 60-80% | Workers busy percentage |
 
@@ -296,10 +304,10 @@ Use Python asyncio for async processing.
 
 ### Performance Tests
 
-1. **Load Test:** Send 20 emails simultaneously, verify all processed within 2 minutes
-2. **Sustained Load:** Send 100 emails over 1 hour, verify no backlog
-3. **Peak Load:** Send 15 emails in 5 minutes, verify < 30 second per email
-4. **Stress Test:** Send 200 emails, verify graceful degradation
+1. **Load Test:** Send 20 emails simultaneously, verify all processed within reasonable time
+2. **Sustained Load:** Monitor system over several hours with variable traffic
+3. **Burst Test:** Send 10 emails in quick succession, verify < 10 second per email (when queue empty)
+4. **Stress Test:** Send large volume, verify graceful degradation
 
 ### Concurrency Tests
 
@@ -312,21 +320,23 @@ Use Python asyncio for async processing.
 
 ## Success Criteria
 
-1. ✅ Process 100 emails/day without backlog
-2. ✅ 95% of emails processed within 30 seconds
+1. ✅ Process variable email volume without backlog
+2. ✅ 95% of emails processed within 10 seconds (when queue is empty)
 3. ✅ No data loss or corruption
 4. ✅ Workers recover from errors automatically
 5. ✅ Performance metrics logged and reviewable
+6. ✅ System handles burst traffic gracefully
 
 ---
 
 ## References
 
-- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q27, Q28
+- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q31 (high volume), Q36 (fast processing)
+- [Component Tier Mapping](../architecture/component-tier-mapping.md)
 - Python threading documentation
 - Python queue documentation
 
 ---
 
 **Status:** ✅ Accepted
-**Review Date:** After performance testing
+**Review Date:** After performance testing with real email volume

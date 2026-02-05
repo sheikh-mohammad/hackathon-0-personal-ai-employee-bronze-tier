@@ -10,11 +10,13 @@
 
 ## Context
 
-For a production-quality system handling 50-100 emails/day with sensitive data, robust error notification is critical. User selected multiple notification channels:
+For a production-quality system handling variable email volume with continuous monitoring (every 10 seconds), robust error notification is important. User selected multiple notification channels:
 - Dashboard alerts
-- Email notifications  
+- Email notifications
 - Desktop notifications
 - Log files
+
+The system needs to notify the user of critical issues while avoiding notification spam.
 
 ---
 
@@ -30,10 +32,10 @@ For a production-quality system handling 50-100 emails/day with sensitive data, 
 | INFO | ❌ | ❌ | ❌ | ✅ |
 
 **Notification Types:**
-1. **CRITICAL:** System down, data loss risk, security breach
-2. **ERROR:** Processing failures, API errors, skill failures  
-3. **WARNING:** Performance degradation, queue backlog, rate limits
-4. **INFO:** Normal operations, successful processing
+1. **CRITICAL:** System down, watcher crashed, Gmail API auth failure
+2. **ERROR:** Processing failures, skill failures, repeated errors
+3. **WARNING:** Performance degradation, queue backlog, rate limits approaching
+4. **INFO:** Normal operations, successful processing, statistics
 
 ---
 
@@ -60,12 +62,15 @@ For a production-quality system handling 50-100 emails/day with sensitive data, 
 ```markdown
 ## Alerts
 <!-- Critical and error alerts appear here -->
+⚠️ CRITICAL: Gmail Watcher stopped at 10:45 AM
+❌ ERROR: Failed to process 3 emails in last hour
 
 ## System Health
 - Watcher Status: 🟢 Running
-- Last Check: 2 minutes ago
-- Queue Size: 2 emails
-- Avg Processing Time: 18.5s
+- Last Check: 8 seconds ago
+- Queue Size: 1 email
+- Avg Processing Time: 8.2s
+- Emails Today: 12
 ```
 
 ### Email Notifications
@@ -74,9 +79,10 @@ For a production-quality system handling 50-100 emails/day with sensitive data, 
 - Rate limited: max 5 per hour
 
 ### Desktop Notifications
-- Windows 10/11 toast notifications
+- Windows 10/11 toast notifications (using plyer or win10toast library)
 - Only for CRITICAL severity
 - Action buttons: "View Dashboard", "Dismiss"
+- Example: "AI Employee Alert: Gmail Watcher has stopped"
 
 ---
 
@@ -84,20 +90,21 @@ For a production-quality system handling 50-100 emails/day with sensitive data, 
 
 1. ✅ Critical errors trigger all channels within 30 seconds
 2. ✅ User receives email notifications for errors
-3. ✅ Dashboard shows current alerts
+3. ✅ Dashboard shows current alerts prominently
 4. ✅ Desktop notifications appear for critical issues
-5. ✅ No notification spam (rate limited)
-6. ✅ All notifications logged to audit trail
+5. ✅ No notification spam (rate limited appropriately)
+6. ✅ All notifications logged for review
 
 ---
 
 ## References
 
-- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q27
-- Windows Notifications API
-- Plyer Library for cross-platform notifications
+- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q34 (error notification channels)
+- [Component Tier Mapping](../architecture/component-tier-mapping.md)
+- Windows Notifications: plyer library or win10toast
+- Python logging module documentation
 
 ---
 
 **Status:** ✅ Accepted
-**Review Date:** After first week of operation
+**Review Date:** After first week of Bronze Tier operation

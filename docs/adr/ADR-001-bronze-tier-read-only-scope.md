@@ -30,6 +30,7 @@ Scope includes:
 - ✅ Action item extraction
 - ✅ Dashboard updates
 - ✅ Creating summaries and plans
+- ✅ Draft reply writing (stored in vault, not sent)
 - ❌ Email sending (deferred to Silver)
 - ❌ MCP servers (deferred to Silver)
 - ❌ HITL approval workflow for sending (deferred to Silver)
@@ -136,7 +137,7 @@ Do Bronze requirements + minimal email sending.
 ### What Bronze WILL Do
 
 1. **Monitor Gmail continuously**
-   - Poll every 2 minutes
+   - Poll every 10 seconds
    - Extract all relevant metadata
    - Create action files in vault
 
@@ -151,7 +152,18 @@ Do Bronze requirements + minimal email sending.
    - Attachments requiring review
    - Tasks and requests
 
-4. **Provide insights**
+4. **Draft replies (not sent)**
+   - Analyze email content and context
+   - Generate appropriate reply drafts
+   - Store drafts in vault for user review
+   - Match sender's tone and style
+
+5. **Create summaries**
+   - Email summaries for quick review
+   - Daily/weekly summary reports
+   - Action item summaries
+
+6. **Provide insights**
    - Dashboard with statistics
    - Recent activity timeline
    - Priority breakdown
@@ -159,9 +171,10 @@ Do Bronze requirements + minimal email sending.
 
 ### What User Does Manually (Until Silver)
 
-- Read email summaries in Obsidian
-- Decide on responses
-- Compose and send replies in Gmail
+- Review email summaries in Obsidian
+- Review AI-drafted replies
+- Edit drafts if needed
+- Copy and send replies in Gmail (manual send)
 - Mark items as done in vault
 
 ---

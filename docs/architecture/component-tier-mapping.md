@@ -9,7 +9,7 @@
 ## Tier Definitions
 
 ### Bronze Tier: Foundation (8-12 hours)
-**Goal:** Read-only monitoring with intelligent classification
+**Goal:** Read-only monitoring with intelligent classification and replies writing with summaries
 **Deliverable:** Working email monitoring system that creates action items
 
 ### Silver Tier: Functional Assistant (20-30 hours)
@@ -30,23 +30,24 @@
 - ✅ **Obsidian Vault Structure**
   - Dashboard.md
   - Company_Handbook.md
-  - Folder structure: /Inbox, /Needs_Action, /Plans, /Done, /Logs
+  - Folder structure: /Inbox, /Needs_Action, /Done
 
 - ✅ **Gmail Watcher** (`watchers/gmail_watcher.py`)
-  - Poll Gmail API every 2 minutes
+  - Poll Gmail API every 10 seconds
   - Extract email metadata (from, subject, snippet, labels, attachments)
-  - Create .md files in /Needs_Action
+  - Create .md files in /Inbox
   - Track processed IDs to avoid duplicates
-  - Basic error handling and logging
+  - Basic error handling
 
 - ✅ **Claude Code Skills**
-  - `email-classifier.skill.md` - Classify emails by priority/category
-  - `email-processor.skill.md` - Process emails and extract information
-  - `dashboard-updater.skill.md` - Update Dashboard with statistics
+  - `.claude/skills/email-classifier/` - Classify emails by priority/category
+  - `.claude/skills/email-processor/` - Process emails and extract information
+  - `.claude/skills/email-reply-writer/` - Email replies wirting by analyzing the email that came
+  - `.claude/skills/summary-creation/` - Summary Writing for emails and other actions
+  - `.claude/skills/dashboard-updater/` - Update Dashboard with statistics
 
 - ✅ **Configuration System**
   - `.env` file for credentials
-  - `config/email_config.yaml` for classification rules
   - Company_Handbook.md for processing guidelines
 
 #### Bronze+ Practical Additions
@@ -224,7 +225,6 @@
 ### ⏳ Not Started
 - Gmail Watcher implementation
 - Claude Code Skills
-- Configuration files
 - Testing infrastructure
 
 ---
@@ -245,11 +245,11 @@
 ### ✅ Bronze Tier Scope
 - Gmail monitoring only
 - Read-only operations
-- Classification and summarization
+- Classification and summarization and replies writing
 - Dashboard updates
 - Action item extraction
 - Local file operations only
-- Manual Claude Code invocation via watcher
+- Automated Claude Code invocation via watcher
 
 ---
 

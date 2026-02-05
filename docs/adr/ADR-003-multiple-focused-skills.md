@@ -28,11 +28,13 @@ During discovery (Q25), user chose: **"Multiple focused skills (Recommended)"**
 
 ## Decision
 
-**Implement Bronze Tier functionality as THREE focused skills:**
+**Implement Bronze Tier functionality as FIVE focused skills:**
 
 1. **`email-classifier`** - Classify emails by priority and category
 2. **`email-processor`** - Process emails and extract actionable information
-3. **`dashboard-updater`** - Update Dashboard with statistics and activity
+3. **`email-reply-writer`** - Draft email replies (not sent, stored in vault)
+4. **`summary-creation`** - Create summaries for emails and actions
+5. **`dashboard-updater`** - Update Dashboard with statistics and activity
 
 Each skill has a single, well-defined responsibility.
 
@@ -139,7 +141,6 @@ Each skill has a single, well-defined responsibility.
   deadlines: [list of dates with context]
   key_people: [mentioned names/contacts]
   attachments_summary: [what attachments contain]
-  suggested_response: [brief response suggestion]
   ```
 - Plan file in /Plans with detailed analysis
 
@@ -149,9 +150,8 @@ Each skill has a single, well-defined responsibility.
 3. Identify deadlines, dates, time-sensitive items
 4. Detect requests and action items
 5. Summarize attachments (if any)
-6. Suggest response approach (for Silver tier)
-7. Create Plan.md with detailed breakdown
-8. Move email file to /Done
+6. Create Plan.md with detailed breakdown
+7. Move email file to /Done
 
 **Success Criteria:**
 - Extracts all action items correctly
@@ -160,7 +160,74 @@ Each skill has a single, well-defined responsibility.
 
 ---
 
-### Skill 3: `dashboard-updater`
+### Skill 3: `email-reply-writer`
+
+**Purpose:** Draft appropriate email replies (stored in vault, not sent)
+
+**Input:**
+- Processed email markdown file path
+
+**Output:**
+- Reply draft file in /Drafts folder:
+  ```yaml
+  original_email_id: [email ID]
+  to: [recipient email]
+  subject: [reply subject]
+  tone: [formal/casual/mirror]
+  draft_created: [timestamp]
+  ```
+- Draft body with appropriate response
+
+**Logic:**
+1. Read processed email and classification
+2. Analyze email context and sender relationship
+3. Determine appropriate tone (formal/casual/mirror sender)
+4. Generate reply addressing key points
+5. Include answers to questions if available
+6. Match sender's communication style
+7. Save draft to /Drafts folder for user review
+
+**Success Criteria:**
+- Drafts are contextually appropriate
+- Tone matches sender relationship
+- Addresses all key points from original email
+- User approval rate > 80%
+
+---
+
+### Skill 4: `summary-creation`
+
+**Purpose:** Create summaries for emails and other actions
+
+**Input:**
+- Email file(s) or action file(s) to summarize
+- Summary type (daily/weekly/single email)
+
+**Output:**
+- Summary markdown file with:
+  ```yaml
+  summary_type: [daily/weekly/email]
+  period: [date range]
+  created: [timestamp]
+  ```
+- Formatted summary content
+
+**Logic:**
+1. Read input files
+2. Extract key information
+3. Group by priority/category
+4. Create concise summary
+5. Highlight urgent items
+6. Save to /Summaries folder
+
+**Success Criteria:**
+- Summaries are concise and actionable
+- All critical information included
+- Easy to scan and understand
+
+---
+
+### Skill 5: `dashboard-updater`
 
 **Purpose:** Update Dashboard.md with current statistics and activity
 
@@ -204,27 +271,41 @@ def process_email(email_file: Path):
 
     # Step 1: Classify
     subprocess.run([
-        'ccr', '--skill', 'email-classifier',
+        'ccr', 'code', '--skill', 'email-classifier',
         str(email_file)
     ])
 
     # Step 2: Process
     subprocess.run([
-        'ccr', '--skill', 'email-processor',
+        'ccr', 'code', '--skill', 'email-processor',
         str(email_file)
     ])
 
-    # Step 3: Update Dashboard
+    # Step 3: Draft Reply
     subprocess.run([
-        'ccr', '--skill', 'dashboard-updater',
+        'ccr', 'code', '--skill', 'email-reply-writer',
+        str(email_file)
+    ])
+
+    # Step 4: Create Summary
+    subprocess.run([
+        'ccr', 'code', '--skill', 'summary-creation',
+        str(email_file)
+    ])
+
+    # Step 5: Update Dashboard
+    subprocess.run([
+        'ccr', 'code', '--skill', 'dashboard-updater',
         str(vault_path)
     ])
 ```
 
 ### Error Handling
 
-- If classifier fails: Log error, mark for manual review, skip processor
+- If classifier fails: Log error, mark for manual review, skip remaining steps
 - If processor fails: Email stays classified, can retry processing
+- If reply-writer fails: Log error, continue with summary
+- If summary-creation fails: Log error, continue with dashboard
 - If dashboard fails: Log error, doesn't affect email processing
 
 ---
@@ -243,17 +324,18 @@ def process_email(email_file: Path):
 
 ### Negative
 
-- ❌ More files to manage (3 skills vs 1)
-- ❌ More invocations (3 subprocess calls vs 1)
+- ❌ More files to manage (5 skills vs 1)
+- ❌ More invocations (5 subprocess calls vs 1)
 - ❌ Slightly more complex orchestration
 - ❌ Need to handle inter-skill dependencies
+- ❌ Longer total processing time
 
 ### Mitigations
 
 - Document skill interfaces clearly
 - Create helper function for skill invocation
 - Add integration tests for full pipeline
-- Monitor total processing time (should be < 15 seconds)
+- Monitor total processing time (target < 10 seconds per email)
 
 ---
 
@@ -295,10 +377,10 @@ def process_email(email_file: Path):
 ### Silver Tier Additions
 
 Add new skills:
-- `email-drafter` - Generate reply drafts
+- `email-sender` - Send approved email drafts via MCP
 - `approval-checker` - Monitor approval workflow
 
-Existing skills remain unchanged, just add new ones.
+Existing skills remain unchanged, just add new ones. The `email-reply-writer` from Bronze becomes the draft generator for Silver's approval workflow.
 
 ### Gold Tier Additions
 
@@ -343,12 +425,14 @@ Classifier and processor can be reused for other data sources.
 
 ## Success Criteria
 
-1. ✅ All three skills implemented and documented
+1. ✅ All five skills implemented and documented
 2. ✅ Each skill passes unit tests
 3. ✅ Full pipeline passes integration tests
 4. ✅ Skills are reusable (can invoke independently)
 5. ✅ Clear documentation for each skill
 6. ✅ Error handling works correctly
+7. ✅ Reply drafts are contextually appropriate
+8. ✅ Summaries are concise and actionable
 
 ---
 

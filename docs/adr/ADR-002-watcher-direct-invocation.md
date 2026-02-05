@@ -139,7 +139,7 @@ class GmailWatcher:
         """Invoke Claude Code to process the email"""
         try:
             result = subprocess.run(
-                ['ccr code', '--skill', 'email-processor', str(action_file)],
+                ['ccr', 'code', '--skill', 'email-processor', str(action_file)],
                 capture_output=True,
                 text=True,
                 timeout=60
@@ -160,7 +160,7 @@ class GmailWatcher:
             for email in new_emails:
                 action_file = self.create_action_file(email)
                 self.invoke_claude(action_file)
-            time.sleep(120)  # Check every 2 minutes
+            time.sleep(10)  # Check every 10 seconds
 ```
 
 ### Error Handling
@@ -244,7 +244,7 @@ When adding orchestrator in Silver:
 
 ## Success Criteria
 
-1. ✅ Watcher detects new email within 2 minutes
+1. ✅ Watcher detects new email within 10 seconds
 2. ✅ Claude Code invoked automatically
 3. ✅ Email processed and moved to /Done
 4. ✅ Dashboard updated with new statistics

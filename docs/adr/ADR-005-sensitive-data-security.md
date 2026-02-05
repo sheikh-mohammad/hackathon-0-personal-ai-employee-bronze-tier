@@ -10,56 +10,66 @@
 
 ## Context
 
-During discovery, we learned that emails will contain sensitive data:
-- ✅ Financial information (bank statements, invoices)
-- ✅ Health data (personal health information)
-- ✅ Legal/confidential documents
+During discovery, we initially discussed that emails might contain sensitive data:
+- Financial information (bank statements, invoices)
+- Health data (personal health information)
+- Legal/confidential documents
 
-This creates specific security and privacy requirements:
-- Data must be stored securely
-- Access must be controlled
-- Audit trail required
-- Compliance considerations (HIPAA for health, financial regulations)
+However, upon further consideration (Q37 in discovery session), the user decided to **simplify the approach** and not implement complicated audit logging and enhanced security measures for Bronze Tier.
 
-User chose to store **full email content** in vault (not just metadata).
+User chose to store **full email content** in vault (not just metadata) for better searchability and functionality.
+
+**Key Decision:** Keep security simple for Bronze Tier, focus on basic protections rather than enterprise-grade compliance measures.
 
 ---
 
 ## Decision
 
-**Implement multi-layered security approach for Bronze Tier:**
+**Implement simplified security approach for Bronze Tier:**
 
 1. **Local-First Architecture** - All data stays on local machine
 2. **Full Content Storage** - Store complete emails for searchability
-3. **File System Permissions** - Restrict vault access to user only
-4. **Credential Security** - .env file with strict permissions
-5. **Audit Logging** - All access logged with timestamps
-6. **Git Encryption** - Sensitive files excluded from git or encrypted
+3. **File System Permissions** - Restrict vault access to user only (Windows 11)
+4. **Credential Security** - .env file with gitignore
+5. **Basic Logging** - Simple operation logs (not comprehensive audit trail)
+6. **Git Backup** - Vault committed to private git repo
 7. **No Cloud Sync** - Vault stays local (no Dropbox, OneDrive, etc.)
+
+**Explicitly NOT implementing for Bronze:**
+- ❌ Comprehensive audit logging
+- ❌ HIPAA compliance measures
+- ❌ Encryption at rest
+- ❌ Sensitive data detection/flagging
+- ❌ Complex access control systems
 
 ---
 
 ## Rationale
 
-### Why Local-First?
+### Why Simplified Approach?
 
-1. **Maximum Privacy**
-   - Data never leaves user's machine
-   - No third-party access
-   - User has complete control
-   - Complies with data residency requirements
+1. **Bronze Tier Focus**
+   - Focus on core functionality first
+   - Avoid over-engineering
+   - Get working system quickly
+   - Can enhance security in Silver/Gold
 
-2. **Regulatory Compliance**
-   - HIPAA: PHI stays on controlled device
-   - Financial: Sensitive financial data not transmitted
-   - Legal: Attorney-client privilege maintained
-   - GDPR: Data minimization and control
+2. **Personal Use Context**
+   - User's personal email, not enterprise
+   - User has physical control of machine
+   - No regulatory compliance requirements for personal use
+   - User responsible for their own data
 
-3. **Zero Trust in Cloud**
-   - No reliance on cloud provider security
-   - No risk of cloud breaches
-   - No vendor lock-in
-   - No subscription costs
+3. **Complexity vs Value**
+   - Comprehensive audit logging adds significant complexity
+   - HIPAA compliance not needed for personal use
+   - Encryption at rest can be added later if needed
+   - Basic protections sufficient for Bronze
+
+4. **Development Time**
+   - Simplified security saves 4-6 hours of development
+   - Time better spent on core email processing features
+   - Aligns with tier-by-tier progression approach
 
 ### Why Full Content Storage?
 
@@ -150,7 +160,7 @@ __pycache__/
 - User's personal machine
 - Can add git-crypt later if needed
 
-### 4. Audit Logging
+### 4. Basic Logging
 
 **Log Format:**
 ```json
@@ -161,68 +171,46 @@ __pycache__/
   "from": "sender@example.com",
   "subject": "Invoice #1234",
   "classification": "HIGH",
-  "contains_sensitive": true,
-  "sensitive_types": ["financial"],
-  "processed_by": "email-processor",
-  "duration_seconds": 12.5
+  "duration_seconds": 8.5
 }
 ```
 
-**Retention:** 90 days minimum
+**Retention:** Keep logs for debugging, no specific retention policy
+
+**Note:** This is basic operational logging, not comprehensive audit logging.
 
 ### 5. Sensitive Data Detection
 
-**Patterns to Flag:**
-```python
-SENSITIVE_PATTERNS = {
-    'financial': [
-        r'\$\d{1,3}(,\d{3})*(\.\d{2})?',  # Dollar amounts
-        r'account.*\d{4,}',                # Account numbers
-        r'invoice|payment|transaction',    # Financial keywords
-        r'routing.*\d{9}',                 # Routing numbers
-    ],
-    'health': [
-        r'diagnosis|prescription|medical',
-        r'patient|doctor|hospital',
-        r'health.*record|PHI',
-    ],
-    'legal': [
-        r'confidential|privileged',
-        r'attorney.*client',
-        r'legal.*advice',
-        r'settlement|litigation',
-    ]
-}
-```
+**Not implemented for Bronze Tier.**
 
-**Action:** Add `contains_sensitive: true` to email frontmatter
+Rationale:
+- Adds complexity without clear benefit for personal use
+- User can manually identify sensitive emails
+- Can add in Silver/Gold if needed
+- Focus Bronze effort on core functionality
+
+~~**Patterns to Flag:**~~
+~~```python~~
+~~SENSITIVE_PATTERNS = {~~
+~~    'financial': [...],~~
+~~    'health': [...],~~
+~~    'legal': [...]~~
+~~}~~
+~~```~~
 
 ### 6. Access Control
 
 **Who Can Access:**
-- ✅ User (primary account)
+- ✅ User (primary account on Windows 11)
 - ✅ Gmail Watcher (running as user)
 - ✅ Claude Code (invoked by user)
-- ❌ Other users on machine
-- ❌ System services
-- ❌ Network access
+- ❌ Other users on machine (via file permissions)
 
 **How to Verify:**
-```python
-def verify_vault_permissions():
-    """Verify vault has correct permissions"""
-    vault_path = Path(os.getenv('VAULT_PATH'))
-
-    # Check owner
-    stat_info = vault_path.stat()
-    if stat_info.st_uid != os.getuid():
-        raise SecurityError("Vault not owned by current user")
-
-    # Check permissions (Unix-like)
-    if stat_info.st_mode & 0o077:
-        raise SecurityError("Vault accessible by others")
-
-    logging.info("Vault permissions verified")
+```powershell
+# Windows 11 - Check vault permissions
+icacls "AI_Employee_Vault"
+# Should show only current user has access
 ```
 
 ---
@@ -232,11 +220,13 @@ def verify_vault_permissions():
 ### Positive
 
 - ✅ Maximum data privacy (local-first)
-- ✅ Regulatory compliance (HIPAA, financial)
+- ✅ Simple, maintainable security model
 - ✅ Full functionality (complete email content)
 - ✅ User has complete control
 - ✅ No cloud provider risk
-- ✅ Audit trail for all access
+- ✅ Basic logging for debugging
+- ✅ Faster development (no complex security)
+- ✅ Appropriate for personal use
 
 ### Negative
 
@@ -244,49 +234,35 @@ def verify_vault_permissions():
 - ❌ Data loss if machine fails (mitigated by git)
 - ❌ Can't access from other devices
 - ❌ User responsible for security
-- ❌ No encryption at rest (yet)
+- ❌ No encryption at rest
+- ❌ No comprehensive audit trail
+- ❌ Not suitable for enterprise/compliance use
 
 ### Mitigations
 
 - Git commits provide backup
 - Document backup procedures
-- Add encryption option in Silver tier
-- User education on security best practices
-- Regular security audits
+- Add encryption option in Silver/Gold tier if needed
+- Add comprehensive audit logging in Silver/Gold if needed
+- User education on basic security practices
+- Can upgrade security measures based on actual needs
 
 ---
 
 ## Compliance Considerations
 
-### HIPAA (Health Data)
+**Not applicable for Bronze Tier.**
 
-**Requirements:**
-- ✅ Access controls (file permissions)
-- ✅ Audit logs (all access logged)
-- ✅ Data integrity (git versioning)
-- ⚠️ Encryption at rest (optional for Bronze, add later)
-- ✅ Minimum necessary (only user accesses)
+This is a personal use system, not an enterprise or healthcare system. The user is managing their own personal email on their own machine.
 
-**Status:** Acceptable for personal use, not for covered entities
+### Future Considerations (Silver/Gold)
 
-### Financial Regulations
+If the system is later used in a professional/enterprise context, consider:
+- HIPAA compliance measures (if handling PHI)
+- Financial regulations compliance (if handling client financial data)
+- Legal/attorney-client privilege protections (if handling legal communications)
 
-**Requirements:**
-- ✅ Secure storage (local, permissions)
-- ✅ Access controls (user only)
-- ✅ Audit trail (comprehensive logging)
-- ✅ Data retention (configurable)
-
-**Status:** Acceptable for personal financial data
-
-### Legal/Attorney-Client Privilege
-
-**Requirements:**
-- ✅ Confidentiality (local storage, no transmission)
-- ✅ Access controls (user only)
-- ✅ No third-party access (local-first)
-
-**Status:** Maintains privilege (consult attorney for specific cases)
+For Bronze Tier personal use, basic security measures are sufficient.
 
 ---
 
@@ -297,10 +273,11 @@ def verify_vault_permissions():
 - Encrypt sensitive fields in markdown
 - Full disk encryption (BitLocker on Windows)
 
-### Access Logging
+### Comprehensive Audit Logging
 - Log all file access (not just processing)
 - Detect unusual access patterns
 - Alert on unauthorized access attempts
+- Compliance-grade audit trails
 
 ### Data Classification
 - Automatic sensitivity scoring
@@ -322,20 +299,16 @@ def verify_vault_permissions():
 - [ ] Verify .gitignore includes credentials
 - [ ] Test file access from other user account (should fail)
 - [ ] Enable Windows Defender real-time protection
-- [ ] Disable cloud sync for vault directory
 
 ### Operational Phase
-- [ ] Review audit logs weekly
+- [ ] Review logs weekly for errors
 - [ ] Rotate Gmail API credentials quarterly
 - [ ] Update security patches monthly
-- [ ] Backup vault to encrypted external drive monthly
-- [ ] Review sensitive data handling quarterly
+- [ ] Backup vault to git regularly (automatic via commits)
 
 ### Incident Response
 - [ ] Document procedure for lost/stolen device
-- [ ] Document procedure for suspected breach
 - [ ] Document procedure for credential compromise
-- [ ] Test incident response procedures
 
 ---
 
@@ -344,32 +317,30 @@ def verify_vault_permissions():
 1. **Physical Security**
    - Lock computer when away
    - Use strong Windows password
-   - Enable BitLocker if possible
+   - Consider enabling BitLocker
 
 2. **Credential Security**
    - Never share Gmail credentials
    - Use 2FA on Gmail account
-   - Rotate credentials regularly
+   - Rotate credentials periodically
 
 3. **Backup Security**
    - Keep git repo private
-   - Encrypt external backups
    - Store backups securely
 
 4. **Monitoring**
-   - Review audit logs regularly
+   - Review logs for errors
    - Check for unusual activity
-   - Report security concerns
 
 ---
 
 ## References
 
-- [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)
-- [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
-- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q29, Q30
+- [Discovery Session](../sessions/2026-02-04-initial-discovery.md) - Q37 (commented out), Q38, Q40
+- [Component Tier Mapping](../architecture/component-tier-mapping.md)
+- [Hackathon Guide](../../Personal_AI_Employee_Hackathon_0_Building_Autonomous_FTEs_in_2026.md) - Security section
 
 ---
 
 **Status:** ✅ Accepted
-**Review Date:** After Bronze Tier implementation, before handling real sensitive data
+**Review Date:** After Bronze Tier implementation, before moving to Silver
