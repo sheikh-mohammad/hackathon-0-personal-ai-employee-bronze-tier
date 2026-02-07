@@ -32,7 +32,7 @@ During discovery (Q18), user was asked about the workflow and chose: **"Watcher 
 
 Architecture:
 ```
-Gmail API → gmail_watcher.py → subprocess.run(['ccr code', '--skill', 'email-processor']) → Vault
+Gmail API → gmail_watcher.py → subprocess.run(['ccr code', '-p', 'use email-processor skill', '--dangerously-skip-permissions']) → Vault
 ```
 
 ---
@@ -53,9 +53,7 @@ Gmail API → gmail_watcher.py → subprocess.run(['ccr code', '--skill', 'email
    - Better user experience for continuous monitoring
 
 3. **Clear Responsibility**
-   - Watcher owns the entire flow: detect → process → log
-   - Single point of failure, single log file
-   - Easier to troubleshoot issues
+   - Watcher owns the entire flow: detect → process → add file
 
 4. **No Folder Watching Needed**
    - Watcher knows when it creates files
@@ -139,7 +137,7 @@ class GmailWatcher:
         """Invoke Claude Code to process the email"""
         try:
             result = subprocess.run(
-                ['ccr', 'code', '--skill', 'email-processor', str(action_file)],
+                ['ccr', 'code', '-p', f'use email-processor skill {str(action_file)}', '--dangerously-skip-permissions'],
                 capture_output=True,
                 text=True,
                 timeout=60
