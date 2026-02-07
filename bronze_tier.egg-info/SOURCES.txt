@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+bronze_tier.egg-info/PKG-INFO
+bronze_tier.egg-info/SOURCES.txt
+bronze_tier.egg-info/dependency_links.txt
+bronze_tier.egg-info/entry_points.txt
+bronze_tier.egg-info/requires.txt
+bronze_tier.egg-info/top_level.txt
+src/__init__.py
+src/base_watcher.py
+src/gmail_watcher_example.py
+src/watchers/__init__.py
+src/watchers/gmail_watcher.py
