@@ -1,0 +1,3 @@
+[console_scripts]
+authenticate-gmail = authenticate_gmail:authenticate
+gmail-watcher = src.watchers.gmail_watcher:GmailWatcher
