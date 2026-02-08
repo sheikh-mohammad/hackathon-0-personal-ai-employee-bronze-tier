@@ -1,2 +1,4 @@
-credential.json
+credentials.json
 token.json
+.venv
+.gmail_processed_ids

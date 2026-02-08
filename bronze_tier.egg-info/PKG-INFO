@@ -1,0 +1,94 @@
+Metadata-Version: 2.4
+Name: bronze-tier
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown
+Requires-Dist: google>=3.0.0
+Requires-Dist: google-api-python-client>=2.187.0
+Requires-Dist: google-auth>=2.47.0
+Requires-Dist: google-auth-oauthlib>=1.2.2
+
+# Personal AI Employee - Bronze Tier
+
+This project implements a personal AI employee that monitors various sources (currently Gmail) and creates suggested replies and summaries in a vault directory and creates files for processing by human.
+
+## Features
+
+- Monitors Gmail for unread important emails
+- Creates markdown files with YAML frontmatter in the `Inbox` directory
+- Tracks processed emails to prevent duplicates
+- Automatically deletes processed files from `Inbox` after successful processing to `/Needs_Action` or `/Done`
+- Handles OAuth authentication with Gmail API
+
+## File Structure
+
+```
+Bronze_Tier/
+├── authenticate_gmail.py    # Script to authenticate with Gmail API
+├── src/
+│   ├── base_watcher.py          # Abstract base class for all watchers
+│   └── watchers/
+│       ├── gmail_watcher.py         # Main Gmail monitoring class
+│       └── gmail_watcher_example.py # Example implementation
+├── pyproject.toml           # Project dependencies
+└── AI_Employee_Vault/       # Vault directory
+    ├── Needs_Action/        # Action items to be processed by human
+    ├── Inbox/               # Inbox (All Raw Emails)
+    ├── Done/                # Completed items
+    ├── Company_Handbook.md
+    ├── Dashboard.md
+    └── Welcome.md
+```
+
+## Setup Instructions
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+# Or if using uv:
+uv sync
+```
+
+2. Download your Gmail API credentials from Google Cloud Console as `credentials.json` and place it in the root directory.
+
+3. Authenticate with Gmail API:
+```bash
+python authenticate_gmail.py
+```
+Follow the prompts to authorize the application. This will create a `token.json` file.
+
+4. Run the Gmail watcher:
+```bash
+python -m src.watchers.gmail_watcher
+```
+
+## Claude Code Integration
+
+The system is designed to work with Claude Code following the Bronze Tier workflow:
+
+1. **Gmail Watcher** monitors for new emails and creates raw email files in `Inbox` and action items in `Needs_Action`.
+2. **Claude Code** processes the vault following the core loop (Read→Think→Write→Delete)
+3. **Claude Runner** implements the specific processing logic according to Company_Handbook.md
+
+## Changes Made
+
+### Path Handling Improvements
+
+1. **Improved path resolution**: Updated both `authenticate_gmail.py` and `src/watchers/gmail_watcher.py` to use proper path objects instead of relative strings, making the application more robust to different execution contexts.
+
+2. **Corrected example usage**: Updated the default vault path in `src/watchers/gmail_watcher.py` to point to the dedicated `AI_Employee_Vault` directory.
+
+3. **Enhanced file operations**: Used pathlib.Path methods like `unlink()` instead of `os.remove()` for safer file operations.
+
+4. **Organized code structure**: Moved Python modules to `src/` directory with `base_watcher.py` in the main `src` folder and watchers in `src/watchers/` subdirectory.
+
+## Architecture
+
+- `BaseWatcher`: Abstract base class defining the interface for all watchers
+- `GmailWatcher`: Implements Gmail monitoring functionality
+- Suggested replies and summaries are created in YAML frontmatter format for easy parsing by AI systems
+
+## Authentication Flow
+
+The authentication script handles the OAuth2 flow and creates a `token.json` file that contains the user's access credentials. The token is refreshed automatically when needed.
